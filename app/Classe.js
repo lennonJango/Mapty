@@ -125,12 +125,15 @@ class App {
 
     // Colocado renderWorkout
     this._renderWorkout(workOut);
+
+    // Limpa os inputs e faz desaparecer a form da nossa app
+    this._hideForm();
   }
   _renderWorkout(workOut) {
     let html = `<li class="workout workout--${workOut.type}" data-id= "${
       workOut.id
     }">
-    <h2 class="workout__title">Running on ${workOut.description}</h2>
+    <h2 class="workout__title">${workOut.description}</h2>
     <div class="workout__details">
       <span class="workout__icon">${
         workOut.type == "running" ? "🏃‍♂️" : " 🚴‍♀️"
@@ -191,7 +194,9 @@ class App {
         })
       )
       .openPopup()
-      .setPopupContent(`${workOut.distance}`);
+      .setPopupContent(
+        `${workOut.type == "running" ? " 🏃‍♂️ " : " 🚴‍♀️ "} ${workOut.description}`
+      );
     L.geoJson(workOut.coords).addTo(this.#map);
   }
   // Método que mostram a form da nossa app
@@ -207,6 +212,8 @@ class App {
       inputElevation.value =
         "";
     form.classList.add("hidden");
+    form.getElementsByClassName.display = "none";
+    setTimeout(() => (form.style.display = "grid"), 1000);
   }
   _toggleElevationField(e) {
     //Mudar de corrida a pe para ciclismo
