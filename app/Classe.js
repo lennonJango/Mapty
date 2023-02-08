@@ -1,0 +1,285 @@
+"use strict";
+
+// Elementos selecionados
+const form = document.querySelector(".form");
+const containerWorkOuts = document.querySelector(".workouts");
+const inputType = document.querySelector(".form__input--type");
+const inputDistance = document.querySelector(".form__input--distance");
+const inputDuration = document.querySelector(".form__input--duration");
+const inputCadence = document.querySelector(".form__input--cadence");
+const inputElevation = document.querySelector(".form__input--elevation");
+
+// The class App contains the necessary elements what we gonna use for our application.
+class App {
+  #mapEvent;
+  #map;
+  workOut = [];
+  // this is a constructor for our application
+  constructor() {
+    this._getPosition();
+    form.addEventListener("submit", this._newNetwork.bind(this));
+    inputType.addEventListener("change", this._toggleElevationField.bind(this));
+  }
+
+  _getPosition() {
+    //Codigo que recebe a localização actual do usuário
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        this._loadMap.bind(this),
+        function () {
+          alert("We can not find your location");
+        }
+      );
+    }
+  }
+
+  _loadMap(position) {
+    //Codigo que le o mapa usando a API leaflet
+    const { latitude } = position.coords;
+    const { longitude } = position.coords;
+
+    const coords = [latitude, longitude];
+
+    //Novo mapa
+
+    this.#map = L.map("map").setView(coords, 14);
+
+    var tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution:
+        '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(this.#map);
+
+    //Marcador que marca a minha localização atual através do navigator.geolocation
+    L.marker(coords)
+      .addTo(this.#map)
+      .bindPopup(
+        L.popup({
+          maxWidth: 250,
+          autoClose: false,
+          minWidth: 100,
+          closeOnClick: false,
+          className: "running-popup",
+        })
+      )
+      .setPopupContent("Sua localização actual")
+      .openPopup()
+      .closePopup();
+
+    L.geoJson(coords).addTo(this.#map);
+    this.#map.on("click", this._showForm.bind(this));
+  }
+
+  _setLocalStorage() {}
+  _newNetwork(e) {
+    e.preventDefault();
+
+    //Pegar os dados do formulário
+    const { lat, lng } = this.#mapEvent.latlng;
+    const type = inputType.value;
+    const duration = +inputDuration.value;
+    const distance = +inputDistance.value;
+    let workOut;
+    // Verificar se os dados são validos
+    // Este método verificá se os inputs são validos
+    const validarInputs = (...inputs) =>
+      inputs.every((e) => Number.isFinite(e));
+
+    const conditionInput = (...input) =>
+      input.every((e) => Number.isFinite(e) > 0);
+    //Se a atividade for correr , criar Object running
+    if (type === "running") {
+      const cadence = +inputCadence.value;
+      if (
+        !validarInputs(duration, distance, cadence) ||
+        !conditionInput(duration, distance, cadence)
+      ) {
+        return alert(
+          "Os dados tem que ser um numero e um numero maior que zero"
+        );
+      }
+
+      workOut = new Running([lat, lng], distance, duration, cadence);
+    }
+
+    // Se a atividade for andar de bicicleta , criar Object cycle
+    if (type === "cycling") {
+      const elevationGain = +inputElevation.value;
+      if (
+        !validarInputs(duration, distance, elevationGain) ||
+        !conditionInput(duration, distance)
+      ) {
+        return alert("Os dados tem que ser um numero e maior que zero");
+      }
+      workOut = new Cycling([lat, lng], distance, duration, elevationGain);
+    }
+
+    //Adicionar o novo object para um array
+    this.workOut.push(workOut);
+    console.log(this.workOut);
+    //Limpado os inputs
+
+    // Mostrado o marcador na tela
+    this._renderWorkoutMaker(workOut);
+    console.log(this.#mapEvent);
+
+    // Colocado renderWorkout
+    this._renderWorkout(workOut);
+  }
+  _renderWorkout(workOut) {
+    let html = `<li class="workout workout--${workOut.type}" data-id= "${
+      workOut.id
+    }">
+    <h2 class="workout__title">Running on ${workOut.description}</h2>
+    <div class="workout__details">
+      <span class="workout__icon">${
+        workOut.type == "running" ? "🏃‍♂️" : " 🚴‍♀️"
+      }</span>
+      <span class="workout__value">${workOut.distance}</span>
+      <span class="workout__unit">km</span>
+    </div>
+    <div class="workout__details">
+      <span class="workout__icon">⏱</span>
+      <span class="workout__value">${workOut.duration}</span>
+      <span class="workout__unit">min</span>
+    </div> `;
+
+    if (workOut.type === "running") {
+      html += `
+      <div class="workout__details">
+      <span class="workout__icon">⚡️</span>
+      <span class="workout__value">${workOut.pace.toFixed(1)}</span>
+      <span class="workout__unit">min/km</span>
+     </div>
+     <div class="workout__details">
+      <span class="workout__icon">🦶🏼</span>
+      <span class="workout__value">${workOut.cadence}</span>
+      <span class="workout__unit">spm</span>
+    </div>
+  </li>`;
+      form.insertAdjacentHTML("afterend", html);
+    }
+
+    if (workOut.type == "cycling") {
+      html += `
+       <div class="workout__details">
+       <span class="workout__icon">⚡️</span>
+       <span class="workout__value">${workOut.speed.toFixed(1)}</span>
+       <span class="workout__unit">km/h</span>
+      </div>
+     <div class="workout__details">
+      <span class="workout__icon">⛰</span>
+      <span class="workout__value">${workOut.elevationGain}</span>
+      <span class="workout__unit">m</span>
+      </div>
+    </li> 
+      `;
+
+      form.insertAdjacentHTML("afterend", html);
+    }
+  }
+  _renderWorkoutMaker(workOut) {
+    L.marker(workOut.coords)
+      .addTo(this.#map)
+      .bindPopup(
+        L.popup({
+          maxWidth: 250,
+          autoClose: false,
+          minWidth: 100,
+          closeOnClick: false,
+          className: `${workOut.type}-popup`,
+        })
+      )
+      .openPopup()
+      .setPopupContent(`${workOut.distance}`);
+    L.geoJson(workOut.coords).addTo(this.#map);
+  }
+  // Método que mostram a form da nossa app
+  _showForm(mapE) {
+    this.#mapEvent = mapE;
+    form.classList.remove("hidden");
+    inputDistance.focus();
+  }
+  _hideForm() {
+    inputDistance.value =
+      inputCadence.value =
+      inputDuration.value =
+      inputElevation.value =
+        "";
+    form.classList.add("hidden");
+  }
+  _toggleElevationField(e) {
+    //Mudar de corrida a pe para ciclismo
+    e.preventDefault();
+
+    inputElevation.closest(".form__row").classList.toggle("form__row--hidden");
+
+    inputCadence.closest(".form__row").classList.toggle("form__row--hidden");
+  }
+  _moveToPopup(e) {}
+  _reset() {}
+}
+
+class WorkOut {
+  id = (Date.now() + "").slice(-10);
+  date = new Date();
+
+  constructor(coords, distance, duration) {
+    this.distance = distance;
+    this.coords = coords; //Para as coordenadas nos iremos precisar de um array [latitude,longitude]
+    this.duration = duration;
+  }
+
+  _setDescription() {
+    // prettier-ignore
+    const mouth = [ "Janeiro", "Fevereiro", "March","Abril", "Maio", "Junho",  "Julho", "Agosto",  "Setembro","Outubro","Novembro", "Dezembro",];
+
+    this.description = `${this.type[0].toUpperCase()}${this.type.slice(
+      1
+    )} no dia ${this.date.getDay()} de ${mouth[this.date.getMonth()]} `;
+  }
+}
+
+class Running extends WorkOut {
+  // nome;
+  cadence;
+  type = "running";
+
+  constructor(coords, distance, duration, cadence) {
+    super(coords, distance, duration);
+    this.cadence = cadence;
+    // Os métodos mais importantes precisam de iniciar com o nosso constructor
+    this.calcPace();
+    //Método da class workOut que da acesso a descrição da data do treino
+    this._setDescription();
+  }
+
+  // Calcula o tanto de minutos percorridos numa caminhada
+  calcPace() {
+    this.pace = this.duration / this.distance;
+    return this.pace;
+  }
+}
+
+class Cycling extends WorkOut {
+  //name;
+  speed;
+  type = "cycling";
+
+  constructor(coords, distance, duration, elevationGain) {
+    super(coords, distance, duration);
+    this.elevationGain = elevationGain;
+    // Os métodos mais importantes precisam de iniciar com o nosso constructor
+    this.calcSpeed();
+    //Método da class workOut que da acesso a descrição da data do treino
+    this._setDescription();
+  }
+
+  //Calcula o tanto de kmh percorridos
+  calcSpeed() {
+    this.speed = this.distance / this.duration;
+    return this.speed;
+  }
+}
+
+const app = new App();
