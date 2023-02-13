@@ -13,12 +13,14 @@ const inputElevation = document.querySelector(".form__input--elevation");
 class App {
   #mapEvent;
   #map;
-  workOut = [];
+  #workOut = [];
+  #mapZoomLevel = 14;
   // this is a constructor for our application
   constructor() {
     this._getPosition();
     form.addEventListener("submit", this._newNetwork.bind(this));
     inputType.addEventListener("change", this._toggleElevationField.bind(this));
+    containerWorkOuts.addEventListener("click", this._moveToPopup.bind(this));
   }
 
   _getPosition() {
@@ -42,7 +44,7 @@ class App {
 
     //Novo mapa
 
-    this.#map = L.map("map").setView(coords, 14);
+    this.#map = L.map("map").setView(coords, this.#mapZoomLevel);
 
     var tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 18,
@@ -115,8 +117,8 @@ class App {
     }
 
     //Adicionar o novo object para um array
-    this.workOut.push(workOut);
-    console.log(this.workOut);
+    this.#workOut.push(workOut);
+    console.log(this.#workOut);
     //Limpado os inputs
 
     // Mostrado o marcador na tela
@@ -223,7 +225,26 @@ class App {
 
     inputCadence.closest(".form__row").classList.toggle("form__row--hidden");
   }
-  _moveToPopup(e) {}
+  _moveToPopup(e) {
+    // Este método tem a funcionalidade de quando clicamos numa das nossas corridas ele dececionar a corrida para o mapa
+    const workOutEl = e.target.closest(".workout");
+
+    if (!workOutEl) return;
+    const workOut = this.#workOut.find(
+      (work) => work.id == workOutEl.dataset.id
+    );
+
+    console.log(workOut);
+
+    console.log(workOutEl);
+
+    this.#map.setView(workOut.coords, this.#mapZoomLevel, {
+      Animation: true,
+      pan: {
+        duration: 1,
+      },
+    });
+  }
   _reset() {}
 }
 
@@ -243,7 +264,7 @@ class WorkOut {
 
     this.description = `${this.type[0].toUpperCase()}${this.type.slice(
       1
-    )} no dia ${this.date.getDay()} de ${mouth[this.date.getMonth()]} `;
+    )} no dia ${this.date.getDay()} de ${mouth[this.date.getMonth()]}`;
   }
 }
 
