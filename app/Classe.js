@@ -17,7 +17,13 @@ class App {
   #mapZoomLevel = 14;
   // this is a constructor for our application
   constructor() {
+    // Obtém a localização do usuário
     this._getPosition();
+    //Obter os dados do workout do armazenamento local
+    this._getLocalStorage();
+    // Apaga os dados do workout se o numero de workouts for maior que 4
+    this._reset();
+    // Eventos
     form.addEventListener("submit", this._newNetwork.bind(this));
     inputType.addEventListener("change", this._toggleElevationField.bind(this));
     containerWorkOuts.addEventListener("click", this._moveToPopup.bind(this));
@@ -70,9 +76,24 @@ class App {
 
     L.geoJson(coords).addTo(this.#map);
     this.#map.on("click", this._showForm.bind(this));
+    //Marcadores do mapa
+    this.#workOut.forEach((work) => {
+      this._renderWorkoutMaker(work);
+    });
   }
 
-  _setLocalStorage() {}
+  _setLocalStorage() {
+    localStorage.setItem("workout", JSON.stringify(this.#workOut));
+  }
+  _getLocalStorage() {
+    const data = JSON.parse(localStorage.getItem("workout"));
+
+    if (!data) return;
+    this.#workOut = data;
+    this.#workOut.forEach((work) => {
+      this._renderWorkout(work);
+    });
+  }
   _newNetwork(e) {
     e.preventDefault();
 
@@ -130,6 +151,9 @@ class App {
 
     // Limpa os inputs e faz desaparecer a form da nossa app
     this._hideForm();
+
+    // Armazena a corrida feita no localStorage
+    this._setLocalStorage();
   }
   _renderWorkout(workOut) {
     let html = `<li class="workout workout--${workOut.type}" data-id= "${
@@ -197,7 +221,7 @@ class App {
       )
       .openPopup()
       .setPopupContent(
-        `${workOut.type == "running" ? " 🏃‍♂️ " : " 🚴‍♀️ "} ${workOut.description}`
+        `${workOut.type == "running" ? " 🏃‍♂️ " : " 🚴‍♀️ "}${workOut.description}`
       );
     L.geoJson(workOut.coords).addTo(this.#map);
   }
@@ -234,10 +258,6 @@ class App {
       (work) => work.id == workOutEl.dataset.id
     );
 
-    console.log(workOut);
-
-    console.log(workOutEl);
-
     this.#map.setView(workOut.coords, this.#mapZoomLevel, {
       Animation: true,
       pan: {
@@ -245,7 +265,12 @@ class App {
       },
     });
   }
-  _reset() {}
+  _reset() {
+    if (this.#workOut.length >= 4) {
+      localStorage.removeItem("workout");
+      location.reload();
+    }
+  }
 }
 
 class WorkOut {
@@ -261,10 +286,13 @@ class WorkOut {
   _setDescription() {
     // prettier-ignore
     const mouth = [ "Janeiro", "Fevereiro", "March","Abril", "Maio", "Junho",  "Julho", "Agosto",  "Setembro","Outubro","Novembro", "Dezembro",];
+    this.dataDescription = this.date.getUTCDate();
 
     this.description = `${this.type[0].toUpperCase()}${this.type.slice(
       1
-    )} no dia ${this.date.getDay()} de ${mouth[this.date.getMonth()]}`;
+    )} no dia ${this.dataDescription} de ${mouth[this.date.getMonth()]}`;
+
+    return this.description;
   }
 }
 
